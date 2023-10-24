@@ -1,67 +1,76 @@
 #!/usr/bin/env python3
-
-"""
-This module contains the simple pagination class
-And the helper functions to practice cursor based
-API pagination
-"""
+"""Deletion-resilient hypermedia pagination."""
 
 import csv
-import math
-from typing import List, Tuple
+from typing import Any, List, Dict
 
 
 class Server:
-    """Server class to paginate a database of popular baby names.
-    """
+    """Server class to paginate a database of popular baby names."""
+
     DATA_FILE = "Popular_Baby_Names.csv"
 
     def __init__(self):
-        """
-        The constructor
-        """
+        """Initialize server."""
         self.__dataset = None
+        self.__indexed_dataset = None
 
     def dataset(self) -> List[List]:
-        """
-        Cached dataset
-        """
+        """Cache dataset."""
         if self.__dataset is None:
-            with open(self.DATA_FILE, "r", encoding="utf-8") as f:
+            with open(self.DATA_FILE, mode="r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 dataset = [row for row in reader]
             self.__dataset = dataset[1:]
 
         return self.__dataset
 
-    @staticmethod
-    def index_range(page: int, page_size: int) -> Tuple[int, int]:
+    def indexed_dataset(self) -> Dict[int, List]:
+        """Dataset indexed by sorting position, starting at 0."""
+        if self.__indexed_dataset is None:
+            dataset = self.dataset()
+            truncated_dataset = dataset[:1000]
+            self.__indexed_dataset = {
+                i: dataset[i] for i in range(len(dataset))
+            }
+        return self.__indexed_dataset
+
+    def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
         """
-        The Actuall helper function
+        Retrieve data from dataset.
+
         Args:
-            page (int):
-            page_size (int):
+            index (int): the page index
+            page_size (int): the page size (content size)
+
         Returns:
-            Returns an tupple of ints
+            Dict: hypermeta detail of the page
         """
-        if isinstance(page, int) and isinstance(page_size, int):
-            return ((page - 1) * page_size, page_size * page)
-        raise TypeError('Expected `page` and `page_size` to be ints')
+        data: Dict[int, List] = self.indexed_dataset()
+        # Validate index is in a valid range
+        if index is not None:
+            assert index >= 0, "Index must be a non-negative integer."
+            assert index < len(data), "Index is out of range."
 
-    def get_page(self, page: int = 1, page_size: int = 10) -> List[List]:
-        """
-        Get paginated data
-        Args:
-            page (int)
-            page_size (int)
-        """
-        assert isinstance(page, int) and page > 0
-        assert isinstance(page_size, int) and page_size > 0
+        # Calculate the current start index of the return page
+        if index is None:
+            index = 0
+        current_index: int = index
 
-        data = self.dataset()
+        # Calculate the next index to query with
+        next_index: int = current_index + page_size
 
-        try:
-            (start, end) = index_range(page, page_size)
-            return data[start:end]
-        except IndexError:
-            return []
+        # Get the actual page of the dataset
+        current_page_data: list = []
+        for i in range(current_index, min(next_index, len(data))):
+            if i in data:
+                current_page_data.append(data[i])
+
+        # Create the dictionary with the required key-value pairs
+        result_dict: Dict[str, Any] = {
+            'index': current_index,
+            'data': current_page_data,
+            'page_size': page_size,
+            'next_index': next_index
+        }
+        return result_dict
