@@ -1,37 +1,51 @@
 #!/usr/bin/env python3
 
-'''Task 1: FIFO caching
-'''
 
+"""
+This module illustrates how to do simple caching
+in python. This time, we will do FIFO caching.
+If the cache is at maximum capacity, we will discard
+the first item in and add the new one (FIFO)
+"""
 
-from collections import OrderedDict
-from base_caching import BaseCaching
+BaseCaching = __import__("base_caching").BaseCaching
 
 
 class FIFOCache(BaseCaching):
-    '''A class `FIFOCache` that inherits from
-       `BaseCaching` and is a caching system.
-    '''
+    """
+    A prety basic caching  system implementation
+    Based on a FIFO list
+    """
 
     def __init__(self):
+        """
+        The constructor
+        """
         super().__init__()
-        self.cache_data = OrderedDict()
 
     def put(self, key, item):
-        '''assign to the dictionary `self.cache_data` the
-           `item` value for the key `key`
-        '''
-
-        if key is None or item is None:
-            return
-
-        if len(self.cache_data) > BaseCaching.MAX_ITEMS:
-            first_key, _ = self.cache_data.popitem(last=False)
-            print(f"DISCARD: {first_key}")
-
-        self.cache_data[key] = item
+        """
+        Add an item to the cache
+        Args:
+            key (str): the key for the cache
+            item (str): the value to se
+        Returns:
+            Returns None (explicitly)
+        """
+        if key and item:
+            self.cache_data[key] = item
+            if len(self.cache_data.keys()) > super().MAX_ITEMS:
+                last_key = list(self.cache_data.keys())[0]
+                self.cache_data.pop(last_key)
+                print(f'DISCARD: {last_key}')
 
     def get(self, key):
-        '''return the value in `self.cache_data` linked to `key`
-        '''
-        return self.cache_data.get(key, None)
+        """
+        Let's get the cache item by the key
+        Args:
+            key (str): Key to the item
+        Returns:
+            if key in self.cached_items, return the
+            item, None otherwise
+        """
+        return self.cache_data.get(key)
